@@ -1,7 +1,9 @@
 from __future__ import annotations
-import sys
+
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import matplotlib.pyplot as plt  # type: ignore[import]
 import numpy as np
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage  # type: ignore[import]
