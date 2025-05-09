@@ -47,12 +47,12 @@ class ValueIteration(AbstractAgent):
         self.seed = seed
 
         # TODO: Extract MDP components from the environment
-        self.S = None
-        self.A = None
-        self.T = None
-        self.R_sa = None
-        self.n_states = None
-        self.n_actions = None
+        self.S = env.states  # type: ignore[attr-defined]
+        self.A = env.actions
+        self.T = env.transition_matrix  # type: ignore[attr-defined]
+        self.R_sa = env.get_reward_per_action()  # type: ignore[attr-defined]
+        self.n_states = len(self.S)
+        self.n_actions = len(self.A)
 
         # placeholders
         self.V = np.zeros(self.n_states, dtype=float)
@@ -72,6 +72,9 @@ class ValueIteration(AbstractAgent):
         )
 
         # TODO: Call value_iteration() with extracted MDP components
+        self.V = V_opt
+        self.pi = pi_opt
+        self.policy_fitted = True
 
     def predict_action(
         self,
@@ -84,7 +87,8 @@ class ValueIteration(AbstractAgent):
             self.update_agent()
 
         # TODO: Return action from learned policy
-        raise NotImplementedError("predict_action() is not implemented.")
+        action = self.pi[observation]
+        return action, {}
 
 
 def value_iteration(
@@ -124,11 +128,29 @@ def value_iteration(
     """
     n_states, n_actions = R_sa.shape
     V = np.zeros(n_states, dtype=float)
-    # rng = np.random.default_rng(seed)  uncomment this
-    pi = None
+    rng = np.random.default_rng(seed)
+    # pi = None
 
     # TODO: update V using the Q values until convergence
+    while True:
+        V_prev = V.copy()
+        Q = np.zeros((n_states, n_actions), dtype=float)
+
+        for s in range(n_states):
+            for a in range(n_actions):
+                Q[s, a] = R_sa[s, a] + gamma * np.sum(T[s, a] * V_prev)
+
+        V = np.max(Q, axis=1)
+
+        if np.max(np.abs(V - V_prev)) < epsilon:
+            break
 
     # TODO: Extract the greedy policy from V and update pi
+    pi = np.zeros(n_states, dtype=int)
+    for s in range(n_states):
+        best_action = np.argmax(Q[s])
+        # identifying all actions in state s that have the same value as the best action
+        best_actions = np.argwhere(Q[s] == Q[s, best_action]).flatten()
+        pi[s] = rng.choice(best_actions)
 
     return V, pi
