@@ -1,0 +1,50 @@
+seed: 42
+n_trials: 100
+num_episodes: 100
+env:
+  _target_: rl_exercises.environments.MarsRover
+  transition_probabilities:
+  - - 1
+    - 1
+  - - 1
+    - 1
+  - - 1
+    - 1
+  - - 1
+    - 1
+  - - 1
+    - 1
+  rewards:
+  - 1
+  - 0
+  - 0
+  - 0
+  - 10
+  horizon: 10
+  seed: ${seed}
+policy:
+  _target_: rl_exercises.week_3.EpsilonGreedyPolicy
+  epsilon: 0.6804876070945
+  seed: ${seed}
+agent:
+  _target_: rl_exercises.week_3.SARSAAgent
+  alpha: 2.1438514e-06
+  gamma: 0.4165487176538
+search_space:
+  seed: ${seed}
+  hyperparameters:
+    agent.alpha:
+      type: uniform_float
+      lower: 1.0e-06
+      upper: 0.01
+      log: true
+    agent.gamma:
+      type: uniform_float
+      lower: 0.1
+      upper: 0.99
+      log: false
+    policy.epsilon:
+      type: uniform_float
+      lower: 0.05
+      upper: 1.0
+      log: false

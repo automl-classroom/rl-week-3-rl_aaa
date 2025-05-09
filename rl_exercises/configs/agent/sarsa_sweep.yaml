@@ -1,4 +1,3 @@
-
 # Defaults & plugin override
 defaults:
   - _self_                             # Load this config file itself
@@ -7,8 +6,8 @@ defaults:
 
 # Global flags
 seed: 42                             # Seed for reproducibility (env, policy, etc.)
-n_trials: ???                        # TODO: Define the number of trials to be run 
-num_episodes: ???                    # TODO: Define the number of episodes to run for each trial
+n_trials: 100                        # TODO: Define the number of trials to be run 
+num_episodes: 100                  # TODO: Define the number of episodes to run for each trial
 
 # Hydra output & sweeper settings
 hydra:
@@ -16,6 +15,21 @@ hydra:
     dir: ./tmp/sarsa_rs              # Directory for single‐run outputs
   sweep:
     dir: ./tmp/sarsa_rs              # Directory where sweep results are stored
+    subdir: ""
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers: [console]
+    disable_existing_loggers: False
   sweeper:
     n_trials: ${n_trials}                      # Number of sampled configs (trials)
     sweeper_kwargs:
@@ -34,27 +48,44 @@ env:
       - [1, 1]
       - [1, 1]
       - [1, 1]
-  rewards: ???                        # Reward per cell index
-  horizon: ???                        # Max steps per episode
+  rewards: [1, 0, 0, 0, 10]          # Reward per cell index
+  horizon: 10                        # Max steps per episode
   seed: ${seed}                       # Pass same seed into the env constructor
 
 
 # TODO: instantiate the EpsilonGreedyPolicy in Hydra. Replace the ???s with your specification
 policy:
   _target_: rl_exercises.week_3.EpsilonGreedyPolicy
-  epsilon: ???                        # TODO: Initial exploration rate
+  epsilon: 0.3                        # TODO: Initial exploration rate
   seed: ${seed}                       # Seed for the policy’s internal RNG
 
 
 # TODO: instantiate the SARSA agent in Hydra. Replace the ???s with your specification
 agent:
   _target_: rl_exercises.week_3.SARSAAgent
-  alpha: ???                          # TODO: Define the inital learning rate
-  gamma: ???                          # TODO: Define the discount factor
+  alpha: 0.1                          # TODO: Define the inital learning rate
+  gamma: 0.9                          # TODO: Define the discount factor
 
 
 # TODO: Define the search space for the hyperparameters to be swept. Replace the ???s with your specification
 # see https://github.com/automl/hypersweeper/blob/main/examples/configs/search_space/sac.yaml for an example
 search_space:
   seed: ${seed}                      # Seed for the sweeper’s random number generator
-  hyperparameters: ???
+  hyperparameters:
+    agent.alpha:
+      type: uniform_float
+      lower: 0.000001
+      upper: 0.01
+      log: true
+
+    agent.gamma:
+      type: uniform_float
+      lower: 0.1
+      upper: 0.99
+      log: false
+
+    policy.epsilon:
+      type: uniform_float
+      lower: 0.05
+      upper: 1.0
+      log: false

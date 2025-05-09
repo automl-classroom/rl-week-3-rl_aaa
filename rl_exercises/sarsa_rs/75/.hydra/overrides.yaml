@@ -1,0 +1,3 @@
+- agent.alpha=0.0001597458124
+- agent.gamma=0.7438439011828
+- policy.epsilon=0.1223243165158
