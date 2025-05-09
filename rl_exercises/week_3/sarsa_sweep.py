@@ -3,27 +3,29 @@
 This script uses Hydra to instantiate the environment, policy, and SARSA agent from config files,
 then runs multiple episodes and returns the average total reward.
 """
+
 # import sys
 import os
-import matplotlib.pyplot as plt  # Add at the top
 
 # # Add the root directory containing 'hypersweeper' to PYTHONPATH
 # project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 # sys.path.insert(0, project_root)
 import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+import csv
+
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-import csv
 
 # generated with chatGPT
 def log_trial_results(config, reward, file_path="sarsa_rs/sweep_results.csv"):
     """Log results to a single CSV file."""
     # Ensure the directory exists
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    
+
     # Check if the file exists, if not, create it and write header
     file_exists = os.path.isfile(file_path)
     with open(file_path, mode="a", newline="") as f:
@@ -31,7 +33,10 @@ def log_trial_results(config, reward, file_path="sarsa_rs/sweep_results.csv"):
         if not file_exists:
             # Writing the header for the first time
             writer.writerow(["alpha", "gamma", "epsilon", "mean_reward"])
-        writer.writerow([config.agent.alpha, config.agent.gamma, config.policy.epsilon, reward])
+        writer.writerow(
+            [config.agent.alpha, config.agent.gamma, config.policy.epsilon, reward]
+        )
+
 
 def run_episodes(agent, env, num_episodes=5):
     """Run multiple episodes using the SARSA algorithm.
