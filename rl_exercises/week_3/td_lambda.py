@@ -1,105 +1,118 @@
-def q_learning(
-    environment: GridCore,
-    num_episodes: int,
-    discount_factor: float = 1.0,
-    alpha: float = 0.5,
-    epsilon: float = 0.1,
-    epsilon_decay: str = "const",
-    decay_starts: int = 0,
-    eval_every: int = 10,
-    render_eval: bool = True,
+# Refrence:
+#https://medium.com/data-science/reinforcement-learning-td-%CE%BB-introduction-686a5e4f4e60
+#gridenv Q-learning code
+#chatGPT
+from collections import defaultdict
+import numpy as np
+
+def obs_to_key(obs):
+    if isinstance(obs, tuple):
+        obs = obs[0]
+    return (tuple(obs["agent_pos"]), obs["direction"])
+
+def td_lambda_learning(
+    environment,
+    num_episodes,
+    discount_factor=0.99,
+    alpha=0.5,
+    epsilon=0.1,
+    lambda_param=0.8,
+    epsilon_decay='const',
+    decay_starts=0,
+    eval_every=100,
+    render_eval=False
 ):
     """
-    Vanilla tabular Q-learning algorithm
-    :param environment: which environment to use
-    :param num_episodes: number of episodes to train
-    :param discount_factor: discount factor used in TD updates
-    :param alpha: learning rate used in TD updates
-    :param epsilon: exploration fraction (either constant or starting value for schedule)
-    :param epsilon_decay: determine type of exploration (constant, linear/exponential decay schedule)
-    :param decay_starts: After how many episodes epsilon decay starts
-    :param eval_every: Number of episodes between evaluations
-    :param render_eval: Flag to activate/deactivate rendering of evaluation runs
-    :return: training and evaluation statistics (i.e. rewards and episode lengths)
+    Tabular TD(λ) (accumulating traces) with ε‑greedy behaviour policy.
+    ...
     """
-    assert 0 <= discount_factor <= 1, "Lambda should be in [0, 1]"
-    assert 0 <= epsilon <= 1, "epsilon has to be in [0, 1]"
-    assert alpha > 0, "Learning rate has to be positive"
-    # The action-value function.
-    # Nested dict that maps state -> (action -> action-value).
+    # initialize Q and trace matrices
     Q = defaultdict(lambda: np.zeros(environment.action_space.n))
+    E = defaultdict(lambda: np.zeros(environment.action_space.n))
 
-    # Keeps track of episode lengths and rewards
-    rewards = []
-    lens = []
-    test_rewards = []
-    test_lens = []
-    train_steps_list = []
-    test_steps_list = []
+    # schedule ε
+    def get_decay_schedule(start, start_decay, total, mode):
+        if mode == 'const':
+            return np.ones(total) * start
+        elif mode == 'linear':
+            return np.hstack([np.ones(start_decay) * start,
+                              np.linspace(start, 0, total - start_decay)])
+        elif mode == 'log':
+            return np.hstack([np.ones(start_decay) * start,
+                              np.logspace(np.log10(start), np.log10(1e-6), total - start_decay)])
+        else:
+            raise ValueError
 
-    epsilon_schedule = get_decay_schedule(
-        epsilon, decay_starts, num_episodes, epsilon_decay
-    )
-    for i_episode in range(num_episodes + 1):
-        # print('#' * 100)
-        epsilon = epsilon_schedule[min(i_episode, num_episodes - 1)]
-        # The policy we're following
-        policy = make_epsilon_greedy_policy(Q, epsilon, environment.action_space.n)
-        policy_state = environment.reset()
-        episode_length, cummulative_reward = 0, 0
-        while True:  # roll out episode
-            policy_action = np.random.choice(
-                list(range(environment.action_space.n)), p=policy(policy_state)
-            )
-            s_, policy_reward, policy_done, _ = environment.step(policy_action)
-            cummulative_reward += policy_reward
-            episode_length += 1
+    eps_schedule = get_decay_schedule(epsilon, decay_starts, num_episodes, epsilon_decay)
 
-            Q[policy_state][policy_action] = td_update(
-                Q,
-                policy_state,
-                policy_action,
-                policy_reward,
-                s_,
-                discount_factor,
-                alpha,
-            )
+    # bookkeeping
+    train_rewards, train_lengths = [], []
+    test_rewards, test_lengths = [], []
 
-            if policy_done:
-                break
-            policy_state = s_
-        rewards.append(cummulative_reward)
-        lens.append(episode_length)
-        train_steps_list.append(environment.total_steps)
+    for ep in range(1, num_episodes + 1):
+        # reset env, traces
+        state = environment.reset()
+        E.clear()
+        eps = eps_schedule[min(ep - 1, len(eps_schedule) - 1)]
 
-        # evaluation with greedy policy
-        test_steps = 0
-        if i_episode % eval_every == 0:
-            policy_state = environment.reset()
-            episode_length, cummulative_reward = 0, 0
-            if render_eval:
-                environment.render()
-            while True:  # roll out episode
-                policy_action = np.random.choice(
-                    np.flatnonzero(Q[policy_state] == Q[policy_state].max())
-                )
-                environment.total_steps -= 1  # don't count evaluation steps
-                s_, policy_reward, policy_done, _ = environment.step(policy_action)
-                test_steps += 1
+        # pick initial action with ε‑greedy
+        def policy(obs):
+            p = np.ones(environment.action_space.n) * eps / environment.action_space.n
+            best = np.argmax(Q[obs_to_key(obs)])
+            p[best] += (1 - eps)
+            return p
+
+        action = np.random.choice(environment.action_space.n, p=policy(state))
+        done = False
+        t = 0
+        total_r = 0
+
+        while not done:
+            next_state, reward, done, _, _ = environment.step(action)
+            total_r += reward
+
+            next_action = np.random.choice(environment.action_space.n, p=policy(next_state))
+
+            # compute TD error (SARSA form)
+            # Inside the TD(lambda) loop:
+            td_target = reward + discount_factor * Q[obs_to_key(next_state)][next_action]
+            delta = td_target - Q[obs_to_key(state)][action]
+
+            # Decay all eligibility traces first
+            for s in list(E.keys()):
+                for a in range(environment.action_space.n):
+                    E[s][a] *= discount_factor * lambda_param
+
+            # Increment current state-action's trace
+            current_key = obs_to_key(state)
+            E[current_key][action] += 1
+
+            # Update Q-values using the current traces
+            for s in list(E.keys()):
+                for a in range(environment.action_space.n):
+                    if E[s][a] != 0:
+                        Q[s][a] += alpha * delta * E[s][a]
+
+            state, action = next_state, next_action
+            t += 1
+
+        train_rewards.append(total_r)
+        train_lengths.append(t)
+
+        if ep % eval_every == 0:
+            s = environment.reset()
+            done_eval = False
+            r_eval = 0
+            steps = 0
+            while not done_eval:
+                a = np.argmax(Q[obs_to_key(s)])
+                s, r, done_eval, _ = environment.step(a)
                 if render_eval:
                     environment.render()
-                s_ = s_
-                cummulative_reward += policy_reward
-                episode_length += 1
-                if policy_done:
-                    break
-                policy_state = s_
-            test_rewards.append(cummulative_reward)
-            test_lens.append(episode_length)
-            test_steps_list.append(test_steps)
-            print("Done %4d/%4d episodes" % (i_episode, num_episodes))
-    return (
-        (rewards, lens),
-        (test_rewards, test_lens),
-        (train_steps_list, test_steps_list),
-    )
+                r_eval += r
+                steps += 1
+            test_rewards.append(r_eval)
+            test_lengths.append(steps)
+            print(f"Episode {ep}/{num_episodes} — Eval reward: {r_eval}")
+
+    return (train_rewards, train_lengths), (test_rewards, test_lengths)

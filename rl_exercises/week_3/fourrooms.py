@@ -4,6 +4,31 @@ from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal
 from minigrid.minigrid_env import MiniGridEnv
+import numpy as np
+import gym
+from gym import spaces
+
+
+class PositionDirectionWrapper(gym.ObservationWrapper):  # chatGPT
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = spaces.Dict(
+            {
+                "agent_pos": spaces.Box(
+                    low=0,
+                    high=max(self.env.width, self.env.height),
+                    shape=(2,),
+                    dtype=np.int32,
+                ),
+                "direction": spaces.Discrete(4),
+            }
+        )
+
+    def observation(self, obs):
+        return {
+            "agent_pos": np.array(self.env.agent_pos, dtype=np.int32),
+            "direction": self.env.agent_dir,
+        }
 
 
 class FourRoomsEnv(MiniGridEnv):
@@ -124,3 +149,42 @@ class FourRoomsEnv(MiniGridEnv):
             goal.init_pos, goal.cur_pos = self._goal_default_pos
         else:
             self.place_obj(Goal())
+
+
+if __name__ == "__main__":
+    from td_lambda import td_lambda_learning
+    import matplotlib.pyplot as plt
+
+    # Initialize the environment
+    env = FourRoomsEnv(render_mode="human", max_steps=200)
+    env = PositionDirectionWrapper(env)
+
+    # Run TD(λ)
+    (train_rewards, train_lengths), (test_rewards, test_lengths) = td_lambda_learning(
+        environment=env,
+        num_episodes=10000,
+        discount_factor=0.99,
+        alpha=0.1,
+        epsilon=0.3,
+        lambda_param=0.9,
+        epsilon_decay="linear",
+        decay_starts=3000,
+        eval_every=500,
+        render_eval=True,
+    )
+
+    # Plotting training rewards
+    plt.plot(train_rewards)
+    plt.title("Training Rewards")
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.grid()
+    plt.show()
+
+    # Plotting evaluation rewards
+    plt.plot(range(100, 1001, 100), test_rewards, marker="o")
+    plt.title("Evaluation Rewards")
+    plt.xlabel("Episode")
+    plt.ylabel("Evaluation Reward")
+    plt.grid()
+    plt.show()
