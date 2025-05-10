@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import gym
+import numpy as np
+from gym import spaces
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal
 from minigrid.minigrid_env import MiniGridEnv
-import numpy as np
-import gym
-from gym import spaces
 
 
 class PositionDirectionWrapper(gym.ObservationWrapper):  # chatGPT
@@ -152,8 +152,8 @@ class FourRoomsEnv(MiniGridEnv):
 
 
 if __name__ == "__main__":
-    from td_lambda import td_lambda_learning
     import matplotlib.pyplot as plt
+    from td_lambda import td_lambda_learning
 
     # Initialize the environment
     env = FourRoomsEnv(render_mode="human", max_steps=200)

@@ -1,14 +1,17 @@
 # Refrence:
-#https://medium.com/data-science/reinforcement-learning-td-%CE%BB-introduction-686a5e4f4e60
-#gridenv Q-learning code
-#chatGPT
+# https://medium.com/data-science/reinforcement-learning-td-%CE%BB-introduction-686a5e4f4e60
+# gridenv Q-learning code
+# chatGPT
 from collections import defaultdict
+
 import numpy as np
+
 
 def obs_to_key(obs):
     if isinstance(obs, tuple):
         obs = obs[0]
     return (tuple(obs["agent_pos"]), obs["direction"])
+
 
 def td_lambda_learning(
     environment,
@@ -17,10 +20,10 @@ def td_lambda_learning(
     alpha=0.5,
     epsilon=0.1,
     lambda_param=0.8,
-    epsilon_decay='const',
+    epsilon_decay="const",
     decay_starts=0,
     eval_every=100,
-    render_eval=False
+    render_eval=False,
 ):
     """
     Tabular TD(λ) (accumulating traces) with ε‑greedy behaviour policy.
@@ -32,18 +35,28 @@ def td_lambda_learning(
 
     # schedule ε
     def get_decay_schedule(start, start_decay, total, mode):
-        if mode == 'const':
+        if mode == "const":
             return np.ones(total) * start
-        elif mode == 'linear':
-            return np.hstack([np.ones(start_decay) * start,
-                              np.linspace(start, 0, total - start_decay)])
-        elif mode == 'log':
-            return np.hstack([np.ones(start_decay) * start,
-                              np.logspace(np.log10(start), np.log10(1e-6), total - start_decay)])
+        elif mode == "linear":
+            return np.hstack(
+                [
+                    np.ones(start_decay) * start,
+                    np.linspace(start, 0, total - start_decay),
+                ]
+            )
+        elif mode == "log":
+            return np.hstack(
+                [
+                    np.ones(start_decay) * start,
+                    np.logspace(np.log10(start), np.log10(1e-6), total - start_decay),
+                ]
+            )
         else:
             raise ValueError
 
-    eps_schedule = get_decay_schedule(epsilon, decay_starts, num_episodes, epsilon_decay)
+    eps_schedule = get_decay_schedule(
+        epsilon, decay_starts, num_episodes, epsilon_decay
+    )
 
     # bookkeeping
     train_rewards, train_lengths = [], []
@@ -59,7 +72,7 @@ def td_lambda_learning(
         def policy(obs):
             p = np.ones(environment.action_space.n) * eps / environment.action_space.n
             best = np.argmax(Q[obs_to_key(obs)])
-            p[best] += (1 - eps)
+            p[best] += 1 - eps
             return p
 
         action = np.random.choice(environment.action_space.n, p=policy(state))
@@ -71,11 +84,15 @@ def td_lambda_learning(
             next_state, reward, done, _, _ = environment.step(action)
             total_r += reward
 
-            next_action = np.random.choice(environment.action_space.n, p=policy(next_state))
+            next_action = np.random.choice(
+                environment.action_space.n, p=policy(next_state)
+            )
 
             # compute TD error (SARSA form)
             # Inside the TD(lambda) loop:
-            td_target = reward + discount_factor * Q[obs_to_key(next_state)][next_action]
+            td_target = (
+                reward + discount_factor * Q[obs_to_key(next_state)][next_action]
+            )
             delta = td_target - Q[obs_to_key(state)][action]
 
             # Decay all eligibility traces first
