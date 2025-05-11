@@ -123,7 +123,7 @@ def td_lambda_learning(
             steps = 0
             while not done_eval:
                 a = np.argmax(Q[obs_to_key(s)])
-                s, r, done_eval, _ = environment.step(a)
+                s, r, done_eval, _, _ = environment.step(a)
                 if render_eval:
                     environment.render()
                 r_eval += r

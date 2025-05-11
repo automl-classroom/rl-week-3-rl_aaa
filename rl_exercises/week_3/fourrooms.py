@@ -156,20 +156,20 @@ if __name__ == "__main__":
     from td_lambda import td_lambda_learning
 
     # Initialize the environment
-    env = FourRoomsEnv(render_mode="human", max_steps=200)
+    env = FourRoomsEnv(render_mode="human", max_steps=200, agent_pos=(1, 1), goal_pos=(2, 2))
     env = PositionDirectionWrapper(env)
 
     # Run TD(λ)
     (train_rewards, train_lengths), (test_rewards, test_lengths) = td_lambda_learning(
         environment=env,
-        num_episodes=10000,
+        num_episodes=100,
         discount_factor=0.99,
         alpha=0.1,
         epsilon=0.3,
         lambda_param=0.9,
         epsilon_decay="linear",
-        decay_starts=3000,
-        eval_every=500,
+        decay_starts=30,
+        eval_every=10,
         render_eval=True,
     )
 
