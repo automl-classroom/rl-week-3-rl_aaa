@@ -155,7 +155,8 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from td_lambda import td_lambda_learning
 
-    # Initialize the environment
+    # for training the agent the best is to set agent_pos and goal_pos to None because then the positions are
+    # randomized.
     env = FourRoomsEnv(render_mode="human", max_steps=200, agent_pos=(1, 1), goal_pos=(2, 2))
     env = PositionDirectionWrapper(env)
 
